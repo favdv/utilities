@@ -85,12 +85,12 @@ def verify_libraries(required_libraries: list) -> None:
         except ImportError:
             missing_libraries.append(library)
     if missing_libraries:
-        print("The following libraries are missing:")
+        print(f"The following libraries are missing:")
         for lib in missing_libraries:
             print(f" - {lib}")
-        print("Install them with: pip install " + " ".join(missing_libraries))
+        print(f"Install them with: pip install " + " ".join(missing_libraries))
         sys.exit(1)  # Exit the script since dependencies are critical
-    print("Libraries in place")
+    print(f"Libraries in place")
 
 
 def sanitize_name(name: str, max_length: int = 31) -> str:
@@ -197,8 +197,8 @@ def combine_csvs(
         print(f"Failed to validate or create the output folder. Error: {e}")
         return
     
-    print("")
-    print("Start processing CSV files...")
+    print(f"")
+    print(f"Start processing CSV files...")
 
     # Initialize a new Excel workbook
     wb = Workbook()
@@ -258,8 +258,8 @@ def combine_csvs(
 
 
 if __name__ == "__main__":
-    print("Starting process...")
-    print("")
+    print(f"Starting process...")
+    print(f"")
     
     verify_libraries(["pandas", "openpyxl"])
     parser = argparse.ArgumentParser(description="Combine CSV files into a single Excel file.")
