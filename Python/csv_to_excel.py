@@ -197,7 +197,6 @@ def combine_csvs(
         print(f"Failed to validate or create the output folder. Error: {e}")
         return
     
-    print(f"")
     print(f"Start processing CSV files...")
 
     # Initialize a new Excel workbook
@@ -250,7 +249,6 @@ def combine_csvs(
     # Save the workbook
     try:
         wb.save(output_path)
-        print(f"")
         print(f"Excel file created successfully! File saved as: {output_path}")
         print(f"Make sure you check the output. If not, it might be due to the associated CSV being misconfigured.")
     except Exception as e:
@@ -259,7 +257,6 @@ def combine_csvs(
 
 if __name__ == "__main__":
     print(f"Starting process...")
-    print(f"")
     
     verify_libraries(["pandas", "openpyxl"])
     parser = argparse.ArgumentParser(description="Combine CSV files into a single Excel file.")
