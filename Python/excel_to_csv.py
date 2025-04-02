@@ -138,10 +138,14 @@ if __name__ == "__main__":
     print(f"Starting process...")
     verify_libraries(["pandas", "openpyxl"])
     parser = argparse.ArgumentParser(description="Extract sheets and tables from an Excel file and save them as CSVs.")
-    parser.add_argument("--filename", required=True, help="Path to the input Excel file")
+    parser.add_argument("--filename", help="Path to the input Excel file")
     parser.add_argument("--output", help="Output folder for CSV files (default: same as Excel file location)")
     parser.add_argument("--delimiter", default=",", help="Delimiter for CSV files (default: comma)")
     
     args = parser.parse_args()
-    
+
+    # Prompt user for filename if not provided
+    if not args.filename:
+        args.filename = input("Please provide the Excel filename (.xlsx) to be converted: ").strip()
+
     extract_sheets_to_csv(args.filename, args.output, args.delimiter)
