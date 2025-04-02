@@ -19,12 +19,17 @@
 #
 # Example Usage:
 # 1. Extract all sheets and tables from an Excel file:
+#    python excel_to_csv.py
+#
+# The user will be prompted to provide the filename of the spreadsheet.
+#
+# 2. Extract all sheets and tables from an Excel file:
 #    python excel_to_csv.py --filename my_data.xlsx
 #
-# 2. Specify an output folder for CSVs:
+# 3. Specify an output folder for CSVs:
 #    python excel_to_csv.py --filename my_data.xlsx --output /path/to/output/
 #
-# 3. Use a different delimiter (e.g., semicolon):
+# 4. Use a different delimiter (e.g., semicolon):
 #    python excel_to_csv.py --filename my_data.xlsx --delimiter ";"
 #
 # Restrictions:
