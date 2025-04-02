@@ -135,17 +135,21 @@ def extract_sheets_to_csv(excel_file, output_folder=None, delimiter=","):
             print(f"Error processing sheet {sheet_name}: {e}")
 
 if __name__ == "__main__":
-    print(f"Starting process...")
+    print("Verifying required libraries...")
     verify_libraries(["pandas", "openpyxl"])
+    
+    print("Parsing command-line arguments...")
     parser = argparse.ArgumentParser(description="Extract sheets and tables from an Excel file and save them as CSVs.")
     parser.add_argument("--filename", help="Path to the input Excel file")
     parser.add_argument("--output", help="Output folder for CSV files (default: same as Excel file location)")
     parser.add_argument("--delimiter", default=",", help="Delimiter for CSV files (default: comma)")
-    
     args = parser.parse_args()
-
-    # Prompt user for filename if not provided
+    
     if not args.filename:
+        print("No filename provided via command-line arguments.")
         args.filename = input("Please provide the Excel filename (.xlsx) to be converted: ").strip()
 
+    print(f"Filename received: {args.filename}")
+    print("Starting process...")
+    
     extract_sheets_to_csv(args.filename, args.output, args.delimiter)
