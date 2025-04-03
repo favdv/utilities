@@ -49,247 +49,90 @@
 # - If a CSV is malformed (e.g., missing headers or inconsistent columns), unexpected behavior may occur, such as errors or missing data.
 # --------------------------------------------------------------------------
 
-
-
-# Defaults (defined right at the top for easy access and modification)
-DEFAULT_OUTPUT = "combined_csvs.xlsx"  # Default name for the output Excel file
-DEFAULT_DELIMITER = ","  # Default delimiter for CSV files (comma-separated)
-DEFAULT_IGNORE_CSVS = []  # Default list of CSV files to ignore (empty by default)
-
-# Standard library imports
 import os
 import re
 import sys
 import argparse
-
-# Third-party library imports
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
 from openpyxl.worksheet.table import Table, TableStyleInfo
-
+from openpyxl.utils import get_column_letter
 
 def verify_libraries(required_libraries: list) -> None:
-    """
-    Verifies that all required Python libraries are installed.
-    If any library is missing, it provides an actionable message
-    and exits the script gracefully.
-
-    Args:
-        required_libraries (list): List of library names to verify.
-    """
-    missing_libraries = []
-    for library in required_libraries:
-        try:
-            __import__(library)  # Dynamically try importing each library
-        except ImportError:
-            missing_libraries.append(library)
+    missing_libraries = [lib for lib in required_libraries if not __import__(lib, globals(), locals(), [], 0)]
     if missing_libraries:
-        print(f"The following libraries are missing:")
-        for lib in missing_libraries:
-            print(f" - {lib}")
-        print(f"Install them with: pip install " + " ".join(missing_libraries))
-        sys.exit(1)  # Exit the script since dependencies are critical
-    print(f"Libraries in place")
+        print(f"Missing libraries: {', '.join(missing_libraries)}")
+        print(f"Install with: pip install {' '.join(missing_libraries)}")
+        sys.exit(1)
 
+def detect_delimiter(file_path: str) -> str:
+    with open(file_path, 'r', encoding='utf-8') as file:
+        first_line = file.readline()
+    delimiters = [',', ';', '\t', '|']
+    return max(delimiters, key=lambda d: first_line.count(d))
 
 def sanitize_name(name: str, max_length: int = 31) -> str:
-    """
-    Ensures Excel tab and table names are valid by:
-    - Replacing invalid characters with underscores.
-    - Truncating names exceeding Excel's 31-character limit.
+    sanitized = re.sub(r"[^\w]", "_", name)
+    return sanitized[:max_length] if len(sanitized) <= max_length else sanitized[:max_length-3] + "..."
 
-    Args:
-        name (str): The name to sanitize.
-        max_length (int): Maximum allowed length for the name.
+def validate_path(path: str) -> str:
+    abs_path = os.path.abspath(path)
+    if not os.path.exists(abs_path) or not os.path.isdir(abs_path):
+        raise ValueError(f"Invalid directory path: {abs_path}")
+    return abs_path
 
-    Returns:
-        str: Sanitized and truncated name.
-    """
-    sanitized = re.sub(r"[^\w]", "_", name)  # Replace invalid characters
-    result = (sanitized[:max_length - 3] + "...") if len(sanitized) > max_length else sanitized
-    return result
-
-
-def validate_and_create_output_folder(output_path: str, input_path: str) -> None:
-    """
-    Validates the output folder based on the following criteria:
-    - If the folder doesn't exist, it is created only if it is a child or sibling of the input path.
-    - If the folder exists, verifies write permissions to ensure the output file can be saved.
-
-    Args:
-        output_path (str): Full path to the output file.
-        input_path (str): Full path to the input folder containing CSVs.
-
-    Raises:
-        ValueError: If the folder cannot be created.
-        PermissionError: If the folder exists but is not writable.
-    """
-    output_folder = os.path.dirname(output_path)  # Extract folder from output path
-    if not output_folder:  # If no folder is specified (e.g., "output.xlsx"), no validation is needed
-        return
-
-    # Resolve absolute paths for comparison
-    output_folder_abs = os.path.abspath(output_folder)
-    input_path_abs = os.path.abspath(input_path)
-
-    # Check if the folder exists
-    if not os.path.exists(output_folder_abs):
-        # Allow folder creation if it's a child or sibling of the input path
-        if output_folder_abs.startswith(input_path_abs) or os.path.dirname(output_folder_abs) == os.path.dirname(input_path_abs):
-            print(f"Creating output folder: {output_folder_abs}")
-            os.makedirs(output_folder_abs)
-        else:
-            raise ValueError(
-                f"Error: The specified output folder does not exist and cannot be created.\n\n"
-                f"Please ensure that the folder exists or:\n"
-                f" - Use a child folder within the input path.\n"
-                f" - Use a sibling folder to the input path.\n"
-                f"\nFor example:\n"
-                f" - Child folder: {os.path.join(input_path_abs, 'subfolder/output.xlsx')}\n"
-                f" - Sibling folder: {os.path.join(os.path.dirname(input_path_abs), 'output.xlsx')}\n\n"
-                f"Invalid folder path: {output_folder_abs}"
-            )
-
-    # Verify write permissions by attempting to create a temporary file
+def validate_output_path(output: str, input_path: str) -> str:
+    abs_output = os.path.abspath(output)
+    if not abs_output.lower().endswith(".xlsx"):
+        raise ValueError("Output file must have a .xlsx extension")
+    output_folder = os.path.dirname(abs_output)
+    input_abs = os.path.abspath(input_path)
+    if not (output_folder.startswith(input_abs) or os.path.dirname(output_folder) == os.path.dirname(input_abs)):
+        raise ValueError("Output must be in input directory, its subfolder, or a sibling folder")
+    os.makedirs(output_folder, exist_ok=True)
+    temp_file = os.path.join(output_folder, ".write_test.tmp")
     try:
-        temp_file = os.path.join(output_folder_abs, ".write_test.tmp")
         with open(temp_file, "w") as f:
-            f.write("Write test")  # Write to test permissions
-        os.remove(temp_file)  # Clean up the temporary file
+            f.write("test")
+        os.remove(temp_file)
     except IOError:
-        raise PermissionError(
-            f"Error: Cannot write to the specified output folder.\n\n"
-            f"Please check the folder's permissions and ensure that you have write access.\n"
-            f"Invalid folder path: {output_folder_abs}"
-        )
+        raise PermissionError(f"Cannot write to output folder: {output_folder}")
+    return abs_output
 
-
-def combine_csvs(
-    path: str = None,
-    output: str = DEFAULT_OUTPUT,
-    delimiter: str = DEFAULT_DELIMITER,
-    ignore_csvs: list = DEFAULT_IGNORE_CSVS
-) -> None:
-    """
-    Combines multiple CSV files from a specified directory into a single Excel workbook.
-    Each CSV file is placed into a separate tab with a structured table.
-
-    Args:
-        path (str): Path to the folder containing CSV files. Defaults to current directory.
-        output (str): Path to the output Excel file. Defaults to DEFAULT_OUTPUT.
-        delimiter (str): Delimiter used in the CSV files. Defaults to DEFAULT_DELIMITER.
-        ignore_csvs (list): List of CSV files to ignore. Defaults to DEFAULT_IGNORE_CSVS.
-    """
-    
-    path = os.path.abspath(path or os.getcwd())  # Resolve the input path
-    print(f"Input directory resolved to: {path}")
-    
-    ignore_csvs = ignore_csvs or []  # List of files to ignore
-    print(f"Files to ignore: {ignore_csvs}")
-
-    # Validate and prepare the output folder
-    output_path = os.path.abspath(output)
-    print(f"Output file path resolved to: {output_path}")
-    try:
-        validate_and_create_output_folder(output_path, path)
-    except Exception as e:
-        print(f"Failed to validate or create the output folder. Error: {e}")
-        return
-    
-    print(f"Start processing CSV files...")
-
-    # Initialize a new Excel workbook
+def combine_csvs(path: str = None, output: str = "combined_csvs.xlsx", ignore_csvs: list = []):
+    path = validate_path(path or os.getcwd())
+    output_path = validate_output_path(output, path)
     wb = Workbook()
-    wb.remove(wb.active)  # Remove the default sheet
-
-    # Iterate over files in the input directory
+    wb.remove(wb.active)
     for filename in os.listdir(path):
         if filename.endswith(".csv") and filename not in ignore_csvs:
             try:
                 file_path = os.path.join(path, filename)
-                print(f"Processing file: {filename}")
-                
-                # Read CSV into a DataFrame
+                delimiter = detect_delimiter(file_path)
                 df = pd.read_csv(file_path, delimiter=delimiter, header=0)
                 if df.empty:
-                    print(f"Skipping empty CSV file: {filename}")
                     continue
-
-                # Sanitize tab and table names
                 tab_name = sanitize_name(os.path.splitext(filename)[0])
-                table_name = sanitize_name(tab_name, max_length=31)
-                
-                # Create a new sheet in the workbook
                 ws = wb.create_sheet(title=tab_name)
-                ws.append(list(df.columns))  # Write column headers to the sheet
+                ws.append(list(df.columns))
                 for row in df.itertuples(index=False):
                     ws.append(row)
-
-                # Apply red color to custom headers (if any exist)
-                for col_index, header in enumerate(df.columns, start=1):
-                    if header.startswith("_custom_col"):
-                        ws.cell(row=1, column=col_index).fill = PatternFill(
-                            start_color="FF0000", end_color="FF0000", fill_type="solid"
-                        )
-
-                # Define and add the table
-                table_range = f"A1:{chr(65 + len(df.columns) - 1)}{len(df) + 1}"
-                table = Table(displayName=table_name, ref=table_range)
-                style = TableStyleInfo(
-                    name="TableStyleMedium9", showRowStripes=True, showColumnStripes=True
-                )
-                table.tableStyleInfo = style
+                table_range = f"A1:{get_column_letter(len(df.columns))}{len(df) + 1}"
+                table = Table(displayName=tab_name, ref=table_range)
+                table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium9", showRowStripes=True)
                 ws.add_table(table)
-                print(f"Added table to sheet: {tab_name}")
-
             except Exception as e:
-                print(f"Error processing file {filename}: {e}")
-
-    # Save the workbook
-    try:
-        wb.save(output_path)
-        print(f"Excel file created successfully! File saved as: {output_path}")
-        print(f"Make sure you check the output. If not, it might be due to the associated CSV being misconfigured.")
-    except Exception as e:
-        print(f"Failed to save Excel file. Error: {e}")
-
+                print(f"Error processing {filename}: {e}")
+    wb.save(output_path)
+    print(f"Excel file saved: {output_path}")
 
 if __name__ == "__main__":
-    print(f"Starting process...")
-    
     verify_libraries(["pandas", "openpyxl"])
     parser = argparse.ArgumentParser(description="Combine CSV files into a single Excel file.")
-    parser.add_argument(
-        "--path",
-        type=str,
-        help="Directory containing the CSV files. If not specified, defaults to the current folder."
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        default=DEFAULT_OUTPUT,
-        help=f"Output Excel filename. Defaults to: {DEFAULT_OUTPUT}"
-    )
-    parser.add_argument(
-        "--delimiter",
-        type=str,
-        default=DEFAULT_DELIMITER,
-        help=f"CSV delimiter. Defaults to: '{DEFAULT_DELIMITER}'"
-    )
-    parser.add_argument(
-        "--ignoreCsvs",
-        type=str,
-        help="Comma-separated list of CSV files to ignore (e.g., 'file1.csv,file2.csv')."
-    )
-
-    # Execute the main function
+    parser.add_argument("--path", type=str, help="Directory containing CSV files.")
+    parser.add_argument("--output", type=str, default="combined_csvs.xlsx", help="Output Excel filename.")
+    parser.add_argument("--ignoreCsvs", type=str, help="Comma-separated list of CSV files to ignore.")
     args = parser.parse_args()
     ignore_csvs = args.ignoreCsvs.split(",") if args.ignoreCsvs else []
-
-    combine_csvs(
-        path=args.path,
-        output=args.output,
-        delimiter=args.delimiter,
-        ignore_csvs=ignore_csvs
-    )
+    combine_csvs(path=args.path, output=args.output, ignore_csvs=ignore_csvs)
