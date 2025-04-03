@@ -51,63 +51,45 @@ import pandas as pd
 from openpyxl import load_workbook
 import os
 import argparse
+import sys
 
 def verify_libraries(required_libraries: list) -> None:
-    """
-    Verifies that all required Python libraries are installed.
-    If any library is missing, it provides an actionable message
-    and exits the script gracefully.
-
-    Args:
-        required_libraries (list): List of library names to verify.
-    """
     missing_libraries = []
     for library in required_libraries:
         try:
-            __import__(library)  # Dynamically try importing each library
+            __import__(library)
         except ImportError:
             missing_libraries.append(library)
     if missing_libraries:
-        print(f"The following libraries are missing:")
+        print(f"The following libraries are missing:", flush=True)
         for lib in missing_libraries:
-            print(f" - {lib}")
-        print(f"Install them with: pip install " + " ".join(missing_libraries))
-        sys.exit(1)  # Exit the script since dependencies are critical
-    print(f"Libraries in place")
-    
-def extract_sheets_to_csv(excel_file, output_folder=None, delimiter=","):
-    """
-    Extracts data from each sheet in an Excel workbook and saves them as CSV files.
-    If a sheet contains one or more tables, each table is saved separately with the naming convention:
-        <sheetname> - <tablename>.csv
-    Otherwise, the sheet itself is saved as <sheetname>.csv.
-    
-    :param excel_file: Path to the input Excel file (.xlsx)
-    :param output_folder: Folder where CSV files will be saved (default: same location as excel_file)
-    :param delimiter: Delimiter to use in CSV files (default: comma)
-    """
-    print(f"Processing file: {excel_file}")
+            print(f" - {lib}", flush=True)
+        print(f"Install them with: pip install " + " ".join(missing_libraries), flush=True)
+        sys.exit(1)
+    print(f"Libraries in place", flush=True)
+
+def extract_sheets_to_csv(excel_file, output_folder=None):
+    print(f"Processing file: {excel_file}", flush=True)
     if output_folder is None or output_folder == "":
-        output_folder = os.getcwd()  # Default to the current working directory
+        output_folder = os.getcwd()
     
     os.makedirs(output_folder, exist_ok=True)
-    print(f"Saving CSV files to: {output_folder}")
-    
+    print(f"Saving CSV files to: {output_folder}", flush=True)
+
     try:
         wb = load_workbook(excel_file, data_only=True)
     except Exception as e:
-        print(f"Error loading workbook: {e}")
+        print(f"Error loading workbook: {e}", flush=True)
         return
-    
+
     for sheet_name in wb.sheetnames:
-        print(f"Processing sheet: {sheet_name}")
+        print(f"Processing sheet: {sheet_name}", flush=True)
         sheet = wb[sheet_name]
 
-        # Check if the sheet is completely empty
         if all(cell.value is None for row in sheet.iter_rows() for cell in row):
-            print(f"Skipping empty sheet: {sheet_name}")
-            continue  # Skip to the next sheet
-        
+            print(f"Skipping empty sheet: {sheet_name}", flush=True)
+            continue
+
         try:
             if sheet.tables:
                 for table_name in sheet.tables.keys():
@@ -115,46 +97,65 @@ def extract_sheets_to_csv(excel_file, output_folder=None, delimiter=","):
                     if hasattr(table_obj, 'ref'):
                         table_range = table_obj.ref
                         start_cell, end_cell = table_range.split(":")
-                        
+
                         min_row = sheet[start_cell].row
                         max_row = sheet[end_cell].row
                         min_col = sheet[start_cell].column
                         max_col = sheet[end_cell].column
-                        
+
                         data = [
                             [sheet.cell(row=r, column=c).value for c in range(min_col, max_col + 1)]
                             for r in range(min_row, max_row + 1)
                         ]
-                        
+
                         df = pd.DataFrame(data)
                         csv_filename = f"{sheet_name} - {table_name}.csv"
-                        df.to_csv(os.path.join(output_folder, csv_filename), index=False, sep=delimiter, header=False)
-                        print(f"Saved table: {csv_filename}")
+                        df.to_csv(os.path.join(output_folder, csv_filename), index=False, sep=",", header=False)
+                        print(f"Saved table: {csv_filename}", flush=True)
             else:
                 data = [[cell.value for cell in row] for row in sheet.iter_rows()]
                 df = pd.DataFrame(data)
                 csv_filename = f"{sheet_name}.csv"
-                df.to_csv(os.path.join(output_folder, csv_filename), index=False, sep=delimiter, header=False)
-                print(f"Saved sheet: {csv_filename}")
+                df.to_csv(os.path.join(output_folder, csv_filename), index=False, sep=",", header=False)
+                print(f"Saved sheet: {csv_filename}", flush=True)
         except Exception as e:
-            print(f"Error processing sheet {sheet_name}: {e}")
+            print(f"Error processing sheet {sheet_name}: {e}", flush=True)
 
 if __name__ == "__main__":
-    print("Verifying required libraries...")
+    print("Starting script execution...", flush=True)
+    print("Verifying required libraries...", flush=True)
     verify_libraries(["pandas", "openpyxl"])
-    
-    print("Parsing command-line arguments...")
+
+    print("Parsing command-line arguments...", flush=True)
     parser = argparse.ArgumentParser(description="Extract sheets and tables from an Excel file and save them as CSVs.")
     parser.add_argument("--filename", help="Path to the input Excel file")
     parser.add_argument("--output", help="Output folder for CSV files (default: same as Excel file location)")
-    parser.add_argument("--delimiter", default=",", help="Delimiter for CSV files (default: comma)")
     args = parser.parse_args()
-    
-    if not args.filename:
-        print("No filename provided via command-line arguments.")
-        args.filename = input("Please provide the Excel filename (.xlsx) to be converted: ").strip()
 
-    print(f"Filename received: {args.filename}")
-    print("Starting process...")
+    if not args.filename:
+        print("No filename provided via command-line arguments.", flush=True)
+        args.filename = input("Please provide the Excel filename (.xlsx) to be converted: ").strip()
     
-    extract_sheets_to_csv(args.filename, args.output, args.delimiter)
+    if not args.filename or not args.filename.lower().endswith(".xlsx"):
+        print("Error: No valid filename provided. Aborting...", flush=True)
+        sys.exit(1)
+    
+    if not os.path.exists(args.filename):
+        print("Error: The specified file does not exist.", flush=True)
+        sys.exit(1)
+    
+    if args.output:
+        if not os.path.exists(args.output):
+            try:
+                os.makedirs(args.output)
+            except Exception as e:
+                print(f"Error: Unable to create output directory: {e}", flush=True)
+                sys.exit(1)
+        elif not os.path.isdir(args.output):
+            print("Error: The specified output path is not a directory.", flush=True)
+            sys.exit(1)
+    
+    print(f"Filename received: {args.filename}", flush=True)
+    print("Starting process...", flush=True)
+
+    extract_sheets_to_csv(args.filename, args.output)
