@@ -8,14 +8,31 @@ let
         let
     SelectionListType = "Allow", //Allow or Disallow
     SelectionList = {
-            "Date","DateTime",
-            "DateTimeZone","Duration",
-            "Table", "Value", "Int64", 
-            "Record","List","Replacer",
-            "Number","Text","Splitter",
-            "ExtraValues","RelativePosition",
-            "Json"},
-            
+            "Any","Binary","BinaryEncoding","BinaryFormat",
+            "BinaryOccurrence","BufferMode","Byte","ByteOrder",
+            "Character","Combiner","Comparer",
+            "Compression","Csv","CsvStyle",
+            "Culture","Currency","Date",
+            "DateTime","DateTimeZone","Day",
+            "Decimal","Diagnostics","DirectQueryCapabilities",
+            "Double","Duration","Embedded","Error",
+            "Expression","ExtraValues","File",
+            "Folder","Function","Graph","GroupKind",
+            "Guid","Html","Identity","IdentityProvider",
+            "Int16","Int32","Int64","Int8","ItemExpression",
+            "JoinAlgorithm","JoinKind","JoinSide",
+            "Json","Lines","List","Logical","MissingField",
+            "Module","None","Null","Number","OData",
+            "ODataOmitValues","Occurrence","Order","Password",
+            "Percentage","PercentileMode","Precision","Progress",
+            "QuoteStyle","RankKind","Record","RelativePosition",
+            "Replacer","Resource","RoundingMode","RowExpression",
+            "Single","Splitter","Table","Tables","Text",
+            "TextEncoding","Time","TimeSeriesInsights",
+            "TimeZone","TraceLevel","Type","Uri","Value",
+            "Variable","Web","WebAction","WebMethod","Xml"
+            },
+
     Source = 
         Table.AddIndexColumn(
             Table.SelectRows(
