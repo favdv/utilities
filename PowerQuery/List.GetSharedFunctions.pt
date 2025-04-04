@@ -7,7 +7,15 @@ let
     fn = () => 
         let
     SelectionListType = "Allow", //Allow or Disallow
-    SelectionList = {"Binary","Combiner","Comparer","Date","DateTime","DateTimeZone","Duration","Error","Table", "Value", "Int64", "Record","List","Replacer","Number","Text","Splitter","ExtraValues","RelativePosition","Json"},
+    SelectionList = {
+            "Date","DateTime",
+            "DateTimeZone","Duration",
+            "Table", "Value", "Int64", 
+            "Record","List","Replacer",
+            "Number","Text","Splitter",
+            "ExtraValues","RelativePosition",
+            "Json"},
+            
     Source = 
         Table.AddIndexColumn(
             Table.SelectRows(
