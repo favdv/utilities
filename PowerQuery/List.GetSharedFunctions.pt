@@ -8,7 +8,8 @@ let
         let
     SelectionListType = "Allow", //Allow or Disallow
     SelectionList = {
-            "Any","Binary","BinaryEncoding","BinaryFormat",
+            "AccessControlEntry","AccessControlKind",
+            "AI","AIFunctions", "Any","Binary","BinaryEncoding","BinaryFormat",
             "BinaryOccurrence","BufferMode","Byte","ByteOrder",
             "Character","Combiner","Comparer",
             "Compression","Csv","CsvStyle",
